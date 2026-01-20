@@ -345,9 +345,9 @@ export default function Home() {
               />
               <p className="mt-4 text-zinc-500 dark:text-zinc-400 text-center">
                 <i>UIUC, the birthplace of Project Gutenberg.</i> <br /><br />
-                Johann is an assistant that helps you analyze texts from Project Gutenberg. <br />
+                Johann is an assistant that helps you git analyze texts from Project Gutenberg. <br />
                 Developed as part of a workshop series at McGill <u><a href="https://www.building21.ca" target="_blank" rel="noopener noreferrer">Building 21</a></u>.
-              <u><a href="mailto:laurence.liang@mail.mcgill.ca">Contact</a></u>
+                <br /><u><a href="mailto:laurence.liang@mail.mcgill.ca">Contact</a></u>
               </p>
             </div>
           )}
