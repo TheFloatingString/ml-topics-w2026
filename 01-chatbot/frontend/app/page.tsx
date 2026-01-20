@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import Chart, { ChartData } from "./components/Chart";
 
 interface ToolCall {
   call_id: string;
@@ -204,6 +205,53 @@ export default function Home() {
     </svg>
   );
 
+  // Helper to prettify JSON strings
+  const formatJson = (str: string) => {
+    try {
+      return JSON.stringify(JSON.parse(str), null, 2);
+    } catch {
+      return str;
+    }
+  };
+
+  // Helper to extract chart data from tool result
+  const extractChartData = (result: string): ChartData | null => {
+    try {
+      const parsed = JSON.parse(result);
+      if (parsed?.chart?.type && parsed?.chart?.data) {
+        return parsed.chart as ChartData;
+      }
+    } catch {
+      // Not JSON or no chart data
+    }
+    return null;
+  };
+
+  // Collapsible JSON preview component
+  const CollapsibleJson = ({ content }: { content: string }) => {
+    const [expanded, setExpanded] = useState(false);
+    const formatted = formatJson(content);
+    const lines = formatted.split("\n");
+    const needsCollapse = lines.length > 3;
+    const preview = needsCollapse ? lines.slice(0, 3).join("\n") + "\n..." : formatted;
+
+    return (
+      <div>
+        <pre className="mt-1 whitespace-pre-wrap break-words">
+          {expanded ? formatted : preview}
+        </pre>
+        {needsCollapse && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="mt-1 text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            {expanded ? "Show less" : `Show all (${lines.length} lines)`}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   // Tool calls display component
   const ToolCallsDisplay = ({ toolCalls, isProcessing = false }: { toolCalls: ToolCall[]; isProcessing?: boolean }) => (
     <div className={isProcessing ? "" : "mt-3 border-t border-zinc-200 dark:border-zinc-600 pt-3"}>
@@ -233,14 +281,26 @@ export default function Home() {
                 {tc.status === "completed" && "✓"} {tc.status}
               </span>
             </div>
-            <p className="mt-1 text-zinc-600 dark:text-zinc-300">
-              <span className="text-zinc-400">Args:</span> {tc.arguments}
-            </p>
-            {tc.result && (
-              <p className="mt-1 text-zinc-600 dark:text-zinc-300">
-                <span className="text-zinc-400">Result:</span> {tc.result}
-              </p>
-            )}
+            <div className="mt-1 text-zinc-600 dark:text-zinc-300">
+              <span className="text-zinc-400">Args:</span>
+              <pre className="mt-1 whitespace-pre-wrap break-words">{formatJson(tc.arguments)}</pre>
+            </div>
+            {tc.result && (() => {
+              const chartData = extractChartData(tc.result);
+              if (chartData) {
+                return (
+                  <div className="mt-2">
+                    <Chart chartData={chartData} darkMode={darkMode ?? false} />
+                  </div>
+                );
+              }
+              return (
+                <div className="mt-1 text-zinc-600 dark:text-zinc-300">
+                  <span className="text-zinc-400">Result:</span>
+                  <CollapsibleJson content={tc.result} />
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>
@@ -252,7 +312,7 @@ export default function Home() {
       <header className="flex-shrink-0 border-b border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-800">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-            Chatbot with Tool Calls
+            Johann
           </h1>
           {darkMode !== null && (
             <button
@@ -275,7 +335,22 @@ export default function Home() {
       </header>
 
       <main className="flex-1 overflow-y-auto p-4">
-        <div className="mx-auto max-w-3xl space-y-4">
+        <div className={`mx-auto max-w-3xl ${messages.length === 0 && !isLoading ? "h-full flex flex-col" : "space-y-4"}`}>
+          {messages.length === 0 && !isLoading && (
+            <div className="flex flex-col items-center justify-center flex-1">
+              <img
+                src={darkMode ? "/uiuc-night.png" : "/uiuc-day.png"}
+                alt="UIUC Campus"
+                className="max-w-md w-full rounded-lg"
+              />
+              <p className="mt-4 text-zinc-500 dark:text-zinc-400 text-center">
+                <i>UIUC, the birthplace of Project Gutenberg.</i> <br /><br />
+                Johann is an assistant that helps you analyze texts from Project Gutenberg. <br />
+                Developed as part of a workshop series at McGill <u><a href="https://www.building21.ca" target="_blank" rel="noopener noreferrer">Building 21</a></u>.
+              <u><a href="mailto:laurence.liang@mail.mcgill.ca">Contact</a></u>
+              </p>
+            </div>
+          )}
           {messages.map((msg, i) => (
             <div
               key={i}

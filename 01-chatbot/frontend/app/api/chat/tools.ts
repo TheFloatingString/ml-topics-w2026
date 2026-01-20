@@ -128,6 +128,42 @@ export const tools: Openai.Responses.Tool[] = [
     },
     strict: true,
   },
+  {
+    type: "function",
+    name: "render_chart",
+    description:
+      "Render a chart visualization. Supports line charts, scatter plots, histograms, and bar charts. Use this to visualize data for the user.",
+    parameters: {
+      type: "object",
+      properties: {
+        type: {
+          type: "string",
+          enum: ["line", "scatter", "histogram", "bar"],
+          description: "Type of chart to render",
+        },
+        title: {
+          type: "string",
+          description: "Chart title",
+        },
+        xLabel: {
+          type: "string",
+          description: "Label for X axis",
+        },
+        yLabel: {
+          type: "string",
+          description: "Label for Y axis",
+        },
+        data: {
+          type: "string",
+          description:
+            "JSON string of data. For line/scatter: array of {x, y} objects. For histogram: array of numbers. For bar: array of {label, value} objects.",
+        },
+      },
+      required: ["type", "data"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
 ];
 
 export async function executeToolCall(
@@ -166,6 +202,16 @@ export async function executeToolCall(
   } else if (name === "list_book_ids_from_search_query") {
     result = await searchBooks(args as { query: string });
     summary = JSON.stringify(result);
+  } else if (name === "render_chart") {
+    const chartData = {
+      type: args.type,
+      title: args.title,
+      xLabel: args.xLabel,
+      yLabel: args.yLabel,
+      data: JSON.parse(args.data),
+    };
+    result = { chart: chartData };
+    summary = JSON.stringify({ chart: chartData });
   } else {
     result = { error: "Unknown function" };
     summary = JSON.stringify(result);
