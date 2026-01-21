@@ -26,7 +26,10 @@ function sanitizeOutputForHistory(output: any[]): any[] {
         const args = JSON.parse(item.arguments);
         let modified = false;
         for (const key of Object.keys(args)) {
-          if (typeof args[key] === "string" && args[key].length > MAX_ARG_LENGTH) {
+          if (
+            typeof args[key] === "string" &&
+            args[key].length > MAX_ARG_LENGTH
+          ) {
             args[key] = args[key].slice(0, MAX_ARG_LENGTH) + "...[truncated]";
             modified = true;
           }
@@ -56,14 +59,14 @@ export async function POST(request: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       const send = (event: string, data: any) => {
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        controller.enqueue(
+          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+        );
       };
 
       try {
         // Build input from conversation history
-        const input: any[] = [
-          { role: "system", content: SYSTEM_PROMPT },
-        ];
+        const input: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
         for (const msg of history) {
           input.push({ role: msg.role, content: msg.content });
         }
@@ -98,7 +101,12 @@ export async function POST(request: Request) {
           // Execute each tool call and send completion
           for (const toolCall of toolCalls) {
             const args = JSON.parse(toolCall.arguments);
-            const { summary } = await executeToolCall(toolCall.name, args, toolCall.call_id, store);
+            const { summary } = await executeToolCall(
+              toolCall.name,
+              args,
+              toolCall.call_id,
+              store
+            );
 
             send("tool_call_complete", {
               call_id: toolCall.call_id,
