@@ -12,6 +12,9 @@ const openai = new Openai({
 
 const MODEL = "z-ai/glm-4.7";
 
+const SYSTEM_PROMPT = `You are a helpful AI assistant. You are friendly, concise, and knowledgeable.
+When using tools, explain what you're doing and summarize the results clearly for the user.`;
+
 const MAX_ARG_LENGTH = 500;
 
 // Sanitize function call arguments to prevent context overflow
@@ -58,7 +61,9 @@ export async function POST(request: Request) {
 
       try {
         // Build input from conversation history
-        const input: any[] = [];
+        const input: any[] = [
+          { role: "system", content: SYSTEM_PROMPT },
+        ];
         for (const msg of history) {
           input.push({ role: msg.role, content: msg.content });
         }
