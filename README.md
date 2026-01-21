@@ -10,7 +10,7 @@ The workshops will be given on a bi-weekly schedule throughout the Winter 2026 t
 
 | Week | Date | Topic |
 |------|------|-------|
-| 1 | Jan 21 | Building a Chatbot for Analyzing Literature |
+| 1 | Wednesday, Jan 21, 2026 | Building a Chatbot for Analyzing Literature |
 | 2 | TBA | TBA |
 | 3 | TBA | TBA |
 | 4 | TBA | TBA |
