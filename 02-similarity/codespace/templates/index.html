@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Art & Philosophy Similarity Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            color: #444;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .image-card {
+            cursor: pointer;
+            border: 3px solid transparent;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.3s;
+            background: #f5f5f5;
+        }
+
+        .image-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .image-card.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .image-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: contain;
+            display: block;
+            background: #f5f5f5;
+        }
+
+        .image-info {
+            padding: 10px;
+            background: white;
+        }
+
+        .artist-tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .artist-tag.vangogh {
+            background: #FFD700;
+            color: #333;
+        }
+
+        .artist-tag.picasso {
+            background: #FF69B4;
+            color: white;
+        }
+
+        .image-name {
+            font-size: 0.9em;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .passages-container {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .passages-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .randomize-btn {
+            background: #764ba2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .randomize-btn:hover {
+            background: #5a3a7f;
+            transform: scale(1.05);
+        }
+
+        .passages-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .passage-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .passage-item:hover {
+            border-color: #764ba2;
+            background: #f0f0f0;
+        }
+
+        .passage-item.selected {
+            border-color: #764ba2;
+            background: #e8d5f2;
+        }
+
+        .passage-number {
+            font-weight: bold;
+            color: #764ba2;
+            margin-bottom: 5px;
+        }
+
+        .passage-text {
+            color: #333;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+
+        .submit-section {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 50px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .result-section {
+            margin-top: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-radius: 15px;
+            border: 2px solid #667eea;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+            animation: slideIn 0.5s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .similarity-score {
+            text-align: center;
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+        }
+
+        .result-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .result-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .result-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-size: 1.2em;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Art & Philosophy Similarity Explorer</h1>
+        <p class="subtitle">Discover the connections between visual art and philosophical text through embeddings</p>
+
+        <div class="section">
+            <h2 class="section-title">Step 1: Select a Painting</h2>
+            <div class="images-grid" id="imagesGrid"></div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Step 2: Select a Passage from Plato's Republic</h2>
+            <div class="passages-container">
+                <div class="passages-header">
+                    <span style="color: #666;">Choose one passage below:</span>
+                    <button class="randomize-btn" onclick="loadPassages()">🔄 Randomize Passages</button>
+                </div>
+                <div class="passages-list" id="passagesList"></div>
+            </div>
+        </div>
+
+        <div class="submit-section">
+            <button class="submit-btn" id="submitBtn" onclick="calculateSimilarity()" disabled>
+                Calculate Similarity
+            </button>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <h2 style="text-align: center; color: #667eea; margin-bottom: 20px;">Similarity Result</h2>
+            <div class="similarity-score" id="similarityScore"></div>
+            <div class="result-details" id="resultDetails"></div>
+        </div>
+    </div>
+
+    <script>
+        let images = [];
+        let passages = [];
+        let selectedImageId = null;
+        let selectedPassageIndex = null;
+
+        // Load images on page load
+        async function loadImages() {
+            const response = await fetch('/api/images');
+            images = await response.json();
+
+            const grid = document.getElementById('imagesGrid');
+            grid.innerHTML = images.map(img => `
+                <div class="image-card" onclick="selectImage('${img.id}')">
+                    <img src="/${img.path}" alt="${img.filename}">
+                    <div class="image-info">
+                        <div class="artist-tag ${img.artist.toLowerCase().replace(' ', '')}">${img.artist}</div>
+                        <div class="image-name">${img.filename.replace('.jpg', '').replace(/-/g, ' ')}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Load random passages
+        async function loadPassages() {
+            const response = await fetch('/api/passages/random?count=10');
+            passages = await response.json();
+
+            const list = document.getElementById('passagesList');
+            list.innerHTML = passages.map(passage => `
+                <div class="passage-item" onclick="selectPassage(${passage.index})">
+                    <div class="passage-number">Passage #${passage.index}</div>
+                    <div class="passage-text">${passage.text}</div>
+                </div>
+            `).join('');
+
+            // Reset passage selection
+            selectedPassageIndex = null;
+            updateSubmitButton();
+        }
+
+        // Select an image
+        function selectImage(imageId) {
+            selectedImageId = imageId;
+
+            // Update UI
+            document.querySelectorAll('.image-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+
+            updateSubmitButton();
+        }
+
+        // Select a passage
+        function selectPassage(passageIndex) {
+            selectedPassageIndex = passageIndex;
+
+            // Update UI
+            document.querySelectorAll('.passage-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+
+            updateSubmitButton();
+        }
+
+        // Update submit button state
+        function updateSubmitButton() {
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = !(selectedImageId && selectedPassageIndex !== null);
+        }
+
+        // Calculate similarity
+        async function calculateSimilarity() {
+            const resultSection = document.getElementById('resultSection');
+            resultSection.classList.remove('show');
+            resultSection.innerHTML = '<div class="loading">Calculating similarity...</div>';
+            resultSection.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/similarity', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image_id: selectedImageId,
+                        passage_index: selectedPassageIndex
+                    })
+                });
+
+                const result = await response.json();
+
+                // Display result
+                const percentage = (result.similarity * 100).toFixed(2);
+                resultSection.innerHTML = `
+                    <h2 style="text-align: center; color: #667eea; margin-bottom: 20px;">Similarity Result</h2>
+                    <div class="similarity-score">${percentage}%</div>
+                    <div style="text-align: center; color: #666; margin-bottom: 20px;">
+                        Cosine Similarity: ${result.similarity.toFixed(4)}
+                    </div>
+                    <div class="result-details">
+                        <div class="result-card">
+                            <h3>🎨 Selected Artwork</h3>
+                            <p><strong>Artist:</strong> ${result.artist}</p>
+                            <p><strong>Image:</strong> ${result.image_filename}</p>
+                        </div>
+                        <div class="result-card">
+                            <h3>📖 Selected Passage</h3>
+                            <p><strong>Passage #${result.passage_index}</strong></p>
+                            <p style="margin-top: 10px; font-style: italic;">"${result.passage_text}"</p>
+                        </div>
+                    </div>
+                `;
+                resultSection.classList.add('show');
+            } catch (error) {
+                resultSection.innerHTML = `<div style="color: red; text-align: center;">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Initialize on page load
+        window.onload = () => {
+            loadImages();
+            loadPassages();
+        };
+    </script>
+</body>
+</html>

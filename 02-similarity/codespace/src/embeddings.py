@@ -1,5 +1,13 @@
 import cohere
 import base64
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Initialize Cohere client
+co = cohere.ClientV2(api_key=os.getenv("COHERE_API_KEY"))
 
 def get_embeddings_for_text(text: str) -> list[float]:
     return co.embed(
