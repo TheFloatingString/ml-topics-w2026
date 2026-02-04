@@ -1,0 +1,9 @@
+[project]
+name = "codespace"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "cohere>=5.20.2",
+]
