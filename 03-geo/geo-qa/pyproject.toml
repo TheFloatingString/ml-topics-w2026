@@ -1,0 +1,59 @@
+[project]
+name = "olmoearth-city-embeddings"
+version = "0.1.0"
+description = "Web app for processing satellite images through OlmoEarth and visualizing embeddings vs GDP"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "User"}
+]
+keywords = ["olmoearth", "satellite", "embeddings", "flask", "visualization"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "flask>=2.3.0",
+    "numpy>=1.24.0",
+    "pillow>=10.0.0",
+    "requests>=2.31.0",
+    "torch>=2.0.0",
+    "olmoearth-pretrain>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+olmoearth-app = "app:main"
+
+[project.urls]
+Homepage = "https://github.com/user/olmoearth-city-embeddings"
+Repository = "https://github.com/user/olmoearth-city-embeddings"
+
+[tool.uv]
+python-preference = "only-system"
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

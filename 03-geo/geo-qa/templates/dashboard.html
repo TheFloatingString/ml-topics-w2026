@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - OlmoEarth City Embeddings{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">City Embeddings Dashboard</h1>
+        <p class="text-lg text-gray-600">
+            Visualize the relationship between economic indicators and satellite image embeddings
+        </p>
+    </div>
+
+    {% if not has_data %}
+    <!-- No Data Message -->
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-8 rounded-lg">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <svg class="h-8 w-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <div class="ml-4">
+                <h3 class="text-lg font-medium text-yellow-800">No Data Available</h3>
+                <p class="mt-2 text-yellow-700">{{ message }}</p>
+                <a href="{{ url_for('index') }}" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-yellow-700 bg-yellow-100 hover:bg-yellow-200">
+                    Go to Home Page
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Controls -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- X-Axis Selection -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">X-Axis</label>
+                <select id="xAxis" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500">
+                    <option value="gdp_per_capita">GDP Per Capita (USD)</option>
+                    <option value="gdp_billion_usd">Total GDP (USD Billions)</option>
+                    <option value="population">Population</option>
+                </select>
+            </div>
+
+            <!-- Y-Axis Selection -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Y-Axis (Embedding Dimension)</label>
+                <select id="yAxis" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500">
+                    {% for i in range(embedding_dims) %}
+                    <option value="{{ i }}" {% if i == 0 %}selected{% endif %}>Dimension {{ i }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Scale Selection -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Axis Scale</label>
+                <select id="axisScale" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500">
+                    <option value="linear">Linear</option>
+                    <option value="log">Logarithmic</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Container -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <div id="chart" style="height: 600px;"></div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Processed Cities Data</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">City</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GDP/Capita</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Population</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Embedding</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="citiesTableBody">
+                    {% for city in cities %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ city.city }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ city.country }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${{ "{:,.0f}".format(city.gdp_per_capita) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ "{:,}".format(city.population) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                128-dim
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// City data from server
+const citiesData = {{ cities | tojson }};
+
+// Initialize chart
+function initChart() {
+    const xAxis = document.getElementById('xAxis').value;
+    const yAxisDim = parseInt(document.getElementById('yAxis').value);
+    const scale = document.getElementById('axisScale').value;
+    
+    // Prepare data
+    const xValues = citiesData.map(c => c[xAxis]);
+    const yValues = citiesData.map(c => c.embedding[yAxisDim]);
+    const textLabels = citiesData.map(c => `${c.city}, ${c.country}`);
+    
+    const trace = {
+        x: xValues,
+        y: yValues,
+        mode: 'markers',
+        type: 'scatter',
+        text: textLabels,
+        marker: {
+            size: 12,
+            color: yValues,
+            colorscale: 'Viridis',
+            showscale: true,
+            line: {
+                color: 'white',
+                width: 1
+            }
+        },
+        hovertemplate: '<b>%{text}</b><br>' +
+                      'X: %{x:,.0f}<br>' +
+                      'Y: %{y:.4f}<br>' +
+                      '<extra></extra>'
+    };
+    
+    const layout = {
+        title: {
+            text: `GDP vs OlmoEarth Embedding (Dimension ${yAxisDim})`,
+            font: { size: 18 }
+        },
+        xaxis: {
+            title: xAxis.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            type: scale,
+            tickformat: ',.0f'
+        },
+        yaxis: {
+            title: `Embedding Dimension ${yAxisDim}`,
+            tickformat: '.4f'
+        },
+        hovermode: 'closest',
+        plot_bgcolor: '#f9fafb',
+        paper_bgcolor: 'white',
+        font: { family: 'Inter, sans-serif' }
+    };
+    
+    Plotly.newPlot('chart', [trace], layout, {responsive: true});
+}
+
+// Event listeners
+document.getElementById('xAxis').addEventListener('change', initChart);
+document.getElementById('yAxis').addEventListener('change', initChart);
+document.getElementById('axisScale').addEventListener('change', initChart);
+
+// Initialize on load
+initChart();
+</script>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Vote - OlmoEarth City Embeddings{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">Vote on Embedding Dimensions</h1>
+        <p class="text-lg text-gray-600">
+            Compare two embedding dimensions and vote on which correlates better with GDP per capita
+        </p>
+    </div>
+
+    {% if not has_data %}
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-8 rounded-lg">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <svg class="h-8 w-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <div class="ml-4">
+                <h3 class="text-lg font-medium text-yellow-800">Not Enough Data</h3>
+                <p class="mt-2 text-yellow-700">{{ message }}</p>
+                <a href="{{ url_for('index') }}" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-yellow-700 bg-yellow-100 hover:bg-yellow-200">
+                    Add Cities
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    
+    <!-- Voting Interface -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <!-- Dimension 1 -->
+        <div class="bg-white rounded-xl shadow-lg p-6 border-2 border-transparent hover:border-blue-500 transition cursor-pointer" id="dim1Card" onclick="vote(1)">
+            <div class="text-center mb-4">
+                <h3 class="text-2xl font-bold text-blue-600">Dimension {{ dim1 }}</h3>
+                <p class="text-gray-500">Click to vote for this dimension</p>
+            </div>
+            <div id="chart1" style="height: 400px;"></div>
+        </div>
+
+        <!-- Dimension 2 -->
+        <div class="bg-white rounded-xl shadow-lg p-6 border-2 border-transparent hover:border-purple-500 transition cursor-pointer" id="dim2Card" onclick="vote(2)">
+            <div class="text-center mb-4">
+                <h3 class="text-2xl font-bold text-purple-600">Dimension {{ dim2 }}</h3>
+                <p class="text-gray-500">Click to vote for this dimension</p>
+            </div>
+            <div id="chart2" style="height: 400px;"></div>
+        </div>
+    </div>
+
+    <!-- Skip Button -->
+    <div class="text-center">
+        <button onclick="skipVote()" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+            Skip (Get New Pair)
+        </button>
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if has_data %}
+<script>
+const citiesData = {{ cities | tojson }};
+const dim1 = {{ dim1 }};
+const dim2 = {{ dim2 }};
+
+function createChart(chartId, dim, color) {
+    const xValues = citiesData.map(c => c.gdp_per_capita);
+    const yValues = citiesData.map(c => c.embedding[dim]);
+    const textLabels = citiesData.map(c => `${c.city}, ${c.country}`);
+    
+    const trace = {
+        x: xValues,
+        y: yValues,
+        mode: 'markers',
+        type: 'scatter',
+        text: textLabels,
+        marker: {
+            size: 12,
+            color: color,
+            line: {
+                color: 'white',
+                width: 1
+            }
+        },
+        hovertemplate: '<b>%{text}</b><br>' +
+                      'GDP/Capita: $%{x:,.0f}<br>' +
+                      'Embedding: %{y:.4f}<br>' +
+                      '<extra></extra>'
+    };
+    
+    const layout = {
+        title: {
+            text: `Dimension ${dim} vs GDP/Capita`,
+            font: { size: 14 }
+        },
+        xaxis: {
+            title: 'GDP Per Capita (USD)',
+            type: 'log',
+            tickformat: ',.0f'
+        },
+        yaxis: {
+            title: `Dim ${dim} Value`,
+            tickformat: '.4f'
+        },
+        hovermode: 'closest',
+        plot_bgcolor: '#f9fafb',
+        paper_bgcolor: 'white',
+        font: { family: 'Inter, sans-serif', size: 11 },
+        margin: { t: 40, r: 20, b: 50, l: 60 }
+    };
+    
+    Plotly.newPlot(chartId, [trace], layout, {responsive: true});
+}
+
+// Initialize charts
+createChart('chart1', dim1, '#2563eb');
+createChart('chart2', dim2, '#9333ea');
+
+// Vote function
+async function vote(winner) {
+    const winnerDim = winner === 1 ? dim1 : dim2;
+    const loserDim = winner === 1 ? dim2 : dim1;
+    
+    try {
+        const response = await fetch('/vote/cast', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                winner: winnerDim,
+                loser: loserDim
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Show success and reload for new pair
+            alert(`Vote recorded! Dimension ${winnerDim} wins!`);
+            window.location.reload();
+        } else {
+            alert('Error recording vote: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Skip function
+function skipVote() {
+    window.location.reload();
+}
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}OlmoEarth City Embeddings{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-shadow {
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.1);
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="gradient-bg text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <svg class="h-8 w-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/>
+                    </svg>
+                    <span class="font-bold text-xl">OlmoEarth Cities</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="{{ url_for('index') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white/20 transition">
+                        Add City
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white/20 transition">
+                        Dashboard
+                    </a>
+                    <a href="{{ url_for('vote') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white/20 transition">
+                        Vote
+                    </a>
+                    <a href="{{ url_for('attention_vote') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white/20 transition">
+                        Attention
+                    </a>
+                    <a href="{{ url_for('leaderboard') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white/20 transition">
+                        Leaderboard
+                    </a>
+                    <a href="{{ url_for('attention_leaderboard') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white/20 transition">
+                        Attn Leaderboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <p class="text-center text-gray-500 text-sm">
+                OlmoEarth City Embeddings - Powered by AI2's OlmoEarth Model
+            </p>
+        </div>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

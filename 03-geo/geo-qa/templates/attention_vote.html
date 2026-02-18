@@ -1,0 +1,544 @@
+{% extends "base.html" %}
+
+{% block title %}Attention Vote - OlmoEarth City Embeddings{% endblock %}
+
+{% block extra_css %}
+<style>
+    .attention-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.9;
+        mix-blend-mode: screen;
+        pointer-events: none;
+        border-radius: 8px;
+        z-index: 10;
+    }
+    .attention-container {
+        position: relative;
+        display: block;
+        width: 100%;
+        background: #000;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        min-height: 300px;
+    }
+    .attention-heatmap {
+        width: 100%;
+        height: auto;
+        display: block;
+        opacity: 0.8;
+    }
+    .attention-legend {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 10px;
+        font-size: 12px;
+        color: #666;
+    }
+    .legend-gradient {
+        width: 100px;
+        height: 12px;
+        background: linear-gradient(to right, #0000ff, #00ffff, #00ff00, #ffff00, #ff0000);
+        border-radius: 6px;
+    }
+    .head-label {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+    .head-0 { background: #ff6b6b; color: white; }
+    .head-1 { background: #4ecdc4; color: white; }
+    .head-2 { background: #45b7d1; color: white; }
+    .head-3 { background: #96ceb4; color: white; }
+    .head-4 { background: #ffeaa7; color: #333; }
+    .head-5 { background: #dfe6e9; color: #333; }
+    .head-6 { background: #fd79a8; color: white; }
+    .head-7 { background: #a29bfe; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">Vote on Attention Heads</h1>
+        <p class="text-lg text-gray-600">
+            Compare attention maps from different transformer heads and vote on which highlights more relevant geographic features
+        </p>
+    </div>
+
+    {% if not has_data %}
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-8 rounded-lg">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <svg class="h-8 w-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <div class="ml-4">
+                <h3 class="text-lg font-medium text-yellow-800">Not Enough Data</h3>
+                <p class="mt-2 text-yellow-700">{{ message }}</p>
+                <a href="{{ url_for('index') }}" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-yellow-700 bg-yellow-100 hover:bg-yellow-200">
+                    Add Cities
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    
+    <!-- City Info -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900">{{ city }}</h2>
+                <p class="text-gray-600 mt-1">Satellite Image with Attention Overlays</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-gray-500">Comparing Heads</p>
+                <p class="text-2xl font-bold text-blue-600">{{ head1 }} vs {{ head2 }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pattern Preview -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <h3 class="text-lg font-bold text-gray-900 mb-4 text-center">Pattern Preview (Attention Only)</h3>
+        <div class="grid grid-cols-2 gap-8">
+            <div class="text-center">
+                <span class="head-label head-{{ head1 % 8 }}">Head {{ head1 }}: <span id="pattern1">Loading...</span></span>
+                <canvas id="previewCanvas1" width="200" height="200" style="border: 2px solid #ddd; border-radius: 8px; margin-top: 8px;"></canvas>
+            </div>
+            <div class="text-center">
+                <span class="head-label head-{{ head2 % 8 }}">Head {{ head2 }}: <span id="pattern2">Loading...</span></span>
+                <canvas id="previewCanvas2" width="200" height="200" style="border: 2px solid #ddd; border-radius: 8px; margin-top: 8px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Voting Interface -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <!-- Head 1 -->
+        <div class="bg-white rounded-xl shadow-lg p-6 border-2 border-transparent hover:border-blue-500 transition cursor-pointer" id="head1Card" onclick="vote(1)">
+            <div class="text-center mb-4">
+                <h3 class="text-2xl font-bold text-blue-600">Attention Head {{ head1 }}</h3>
+                <p class="text-gray-500">Click to vote for this head</p>
+            </div>
+            <div class="attention-container">
+                <img id="satelliteImage1" src="{{ image_url }}" alt="Satellite with attention" class="attention-heatmap" crossorigin="anonymous" onerror="this.src='https://via.placeholder.com/400x400/1a1a2e/ffffff?text=Satellite+Image'">
+                <canvas id="attentionCanvas1" class="attention-overlay"></canvas>
+            </div>
+        </div>
+
+        <!-- Head 2 -->
+        <div class="bg-white rounded-xl shadow-lg p-6 border-2 border-transparent hover:border-purple-500 transition cursor-pointer" id="head2Card" onclick="vote(2)">
+            <div class="text-center mb-4">
+                <h3 class="text-2xl font-bold text-purple-600">Attention Head {{ head2 }}</h3>
+                <p class="text-gray-500">Click to vote for this head</p>
+            </div>
+            <div class="attention-container">
+                <img id="satelliteImage2" src="{{ image_url }}" alt="Satellite with attention" class="attention-heatmap" crossorigin="anonymous" onerror="this.src='https://via.placeholder.com/400x400/1a1a2e/ffffff?text=Satellite+Image'">
+                <canvas id="attentionCanvas2" class="attention-overlay"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attention Legend -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <h3 class="text-lg font-bold text-gray-900 mb-4 text-center">Attention Map Legend</h3>
+        <div class="flex items-center justify-center gap-4">
+            <span class="text-sm text-gray-600">Low Attention</span>
+            <div class="w-48 h-4 rounded-full" style="background: linear-gradient(to right, #323296, #ff9632, #ffff64);"></div>
+            <span class="text-sm text-gray-600">High Attention</span>
+        </div>
+        <p class="text-center text-sm text-gray-500 mt-4">
+            Bright yellow/white areas show where the attention head focuses. Compare which head highlights more relevant geographic features.
+        </p>
+    </div>
+
+    <!-- Skip Button -->
+    <div class="text-center">
+        <button onclick="skipVote()" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+            Skip (Get New Pair)
+        </button>
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if has_data %}
+<script>
+const head1 = {{ head1 }};
+const head2 = {{ head2 }};
+const city = "{{ city }}";
+const hasRealAttention = {{ 'true' if has_real_attention else 'false' }};
+const attentionMaps = {{ attention_maps | tojson }};
+
+// Pattern names and descriptions for display
+const patternInfo = {
+    0: { name: "Center Focus", desc: "Focuses on city center" },
+    1: { name: "Horizontal Bands", desc: "East-West patterns" },
+    2: { name: "Vertical Bands", desc: "North-South patterns" },
+    3: { name: "Diagonal", desc: "Diagonal patterns" },
+    4: { name: "Radial Rings", desc: "Circular patterns" },
+    5: { name: "Grid", desc: "Grid-like patterns" },
+    6: { name: "Corners", desc: "Focuses on corners" },
+    7: { name: "Checkerboard", desc: "Checkerboard pattern" }
+};
+
+// Update pattern labels when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    const p1 = document.getElementById('pattern1');
+    const p2 = document.getElementById('pattern2');
+    if (p1) p1.textContent = patternInfo[head1 % 8].name;
+    if (p2) p2.textContent = patternInfo[head2 % 8].name;
+});
+
+// Generate synthetic attention maps for visualization
+function generateAttentionMap(canvasId, headIndex, seed) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) {
+        console.error('Canvas not found:', canvasId);
+        return;
+    }
+    const ctx = canvas.getContext('2d');
+
+    // Set canvas size to match container
+    const container = canvas.parentElement;
+    const img = document.getElementById(canvasId.replace('Canvas', 'Image'));
+
+    // Wait for image to load
+    if (!img || !img.complete || !img.naturalWidth) {
+        console.log('Waiting for image to load:', canvasId);
+        setTimeout(() => generateAttentionMap(canvasId, headIndex, seed), 100);
+        return;
+    }
+
+    console.log('Generating attention map:', canvasId, 'head:', headIndex, 'img size:', img.naturalWidth, 'x', img.naturalHeight);
+
+    // Set canvas size
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientWidth * (img.naturalHeight / img.naturalWidth);
+    console.log('Canvas size set to:', canvas.width, 'x', canvas.height);
+    
+    // Create attention pattern
+    const imageData = ctx.createImageData(canvas.width, canvas.height);
+    const data = imageData.data;
+
+    let maxAttention = 0;
+    let pixelCount = 0;
+
+    for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+            const i = (y * canvas.width + x) * 4;
+
+            let attention = 0;
+            const nx = x / canvas.width;
+            const ny = y / canvas.height;
+
+            switch (headIndex % 8) {
+                case 0: // Center focus
+                    attention = Math.exp(-((nx - 0.5) ** 2 + (ny - 0.5) ** 2) * 5);
+                    break;
+                case 1: // Horizontal stripes - very distinct
+                    attention = (Math.sin(ny * Math.PI * 5) > 0) ? 0.95 : 0.05;
+                    break;
+                case 2: // Vertical stripes - very distinct
+                    attention = (Math.sin(nx * Math.PI * 5) > 0) ? 0.95 : 0.05;
+                    break;
+                case 3: // Diagonal
+                    attention = (Math.sin((nx + ny) * Math.PI * 4) > 0) ? 0.9 : 0.1;
+                    break;
+                case 4: // Radial rings
+                    const dist = Math.sqrt((nx - 0.5) ** 2 + (ny - 0.5) ** 2);
+                    attention = (Math.sin(dist * Math.PI * 6) > 0) ? 0.9 : 0.1;
+                    break;
+                case 5: // Grid
+                    const gx = Math.sin(nx * Math.PI * 6);
+                    const gy = Math.sin(ny * Math.PI * 6);
+                    attention = (Math.abs(gx) > 0.3 || Math.abs(gy) > 0.3) ? 0.9 : 0.1;
+                    break;
+                case 6: // Four corners
+                    const cd1 = Math.exp(-(nx ** 2 + ny ** 2) * 3);
+                    const cd2 = Math.exp(-(((1-nx) ** 2) + ny ** 2) * 3);
+                    const cd3 = Math.exp(-(nx ** 2 + ((1-ny) ** 2)) * 3);
+                    const cd4 = Math.exp(-(((1-nx) ** 2) + ((1-ny) ** 2)) * 3);
+                    attention = Math.max(cd1, cd2, cd3, cd4);
+                    break;
+                case 7: // Checkerboard
+                    const check = Math.sin(nx * Math.PI * 8) * Math.sin(ny * Math.PI * 8);
+                    attention = check > 0 ? 0.9 : 0.1;
+                    break;
+            }
+            
+            // Track max attention for debugging
+            if (attention > maxAttention) maxAttention = attention;
+            pixelCount++;
+
+            // Apply vibrant heatmap colors
+            if (attention > 0.8) {
+                // High attention - bright yellow/white
+                data[i] = 255;     // R
+                data[i + 1] = 255; // G
+                data[i + 2] = 100; // B
+                data[i + 3] = 230; // Alpha
+            } else if (attention > 0.5) {
+                // Medium-high - orange
+                data[i] = 255;     // R
+                data[i + 1] = 140; // G
+                data[i + 2] = 0;   // B
+                data[i + 3] = 210; // Alpha
+            } else if (attention > 0.2) {
+                // Medium - green/cyan
+                data[i] = 0;       // R
+                data[i + 1] = 200; // G
+                data[i + 2] = 150; // B
+                data[i + 3] = 180; // Alpha
+            } else {
+                // Low attention - dark blue (mostly transparent)
+                data[i] = 30;      // R
+                data[i + 1] = 30;  // G
+                data[i + 2] = 150; // B
+                data[i + 3] = 100; // Alpha
+            }
+        }
+    }
+
+    console.log('Attention map data - head:', headIndex, 'max attention:', maxAttention, 'pixels:', pixelCount);
+    ctx.putImageData(imageData, 0, 0);
+}
+
+// Generate attention map from real model output
+function generateRealAttentionMap(canvasId, attentionData) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !attentionData) {
+        console.log('Real attention map not available for', canvasId);
+        return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    const container = canvas.parentElement;
+    const img = document.getElementById(canvasId.replace('Canvas', 'Image'));
+
+    // Wait for image to load
+    if (!img || !img.complete || !img.naturalWidth) {
+        console.log('Waiting for image to load for real attention:', canvasId);
+        setTimeout(() => generateRealAttentionMap(canvasId, attentionData), 100);
+        return;
+    }
+
+    // Set canvas size
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientWidth * (img.naturalHeight / img.naturalWidth);
+
+    console.log('Rendering real attention map on', canvasId, 'size:', canvas.width, 'x', canvas.height);
+
+    // Create image data from real attention
+    const imageData = ctx.createImageData(canvas.width, canvas.height);
+    const data = imageData.data;
+
+    // Flatten attention data if needed
+    let flattenedAttn = attentionData;
+    if (Array.isArray(attentionData[0])) {
+        flattenedAttn = attentionData.flat();
+    }
+
+    // Normalize attention values
+    const maxAttn = Math.max(...flattenedAttn);
+    const minAttn = Math.min(...flattenedAttn);
+    const range = maxAttn - minAttn || 1;
+
+    console.log('Real attention - min:', minAttn, 'max:', maxAttn, 'range:', range);
+
+    // Map attention values to pixels
+    for (let i = 0; i < canvas.width * canvas.height; i++) {
+        // Sample from attention data with interpolation
+        const idx = Math.floor((i / (canvas.width * canvas.height)) * flattenedAttn.length);
+        const attnValue = (flattenedAttn[idx] - minAttn) / range; // Normalize to 0-1
+
+        const pixelIdx = i * 4;
+
+        // Apply vibrant heatmap colors
+        if (attnValue > 0.8) {
+            data[pixelIdx] = 255; data[pixelIdx + 1] = 255; data[pixelIdx + 2] = 100; data[pixelIdx + 3] = 230;
+        } else if (attnValue > 0.5) {
+            data[pixelIdx] = 255; data[pixelIdx + 1] = 140; data[pixelIdx + 2] = 0; data[pixelIdx + 3] = 210;
+        } else if (attnValue > 0.2) {
+            data[pixelIdx] = 0; data[pixelIdx + 1] = 200; data[pixelIdx + 2] = 150; data[pixelIdx + 3] = 180;
+        } else {
+            data[pixelIdx] = 30; data[pixelIdx + 1] = 30; data[pixelIdx + 2] = 150; data[pixelIdx + 3] = 100;
+        }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    console.log('Real attention map rendered on', canvasId);
+}
+
+// Initialize attention maps on page load
+function initAttentionMaps() {
+    console.log('=== initAttentionMaps called ===');
+    console.log('head1:', head1, 'head2:', head2, 'city:', city, 'hasRealAttention:', hasRealAttention);
+
+    if (hasRealAttention && attentionMaps && attentionMaps.length > 0) {
+        console.log('Using real attention maps. Count:', attentionMaps.length);
+        // Use real attention maps
+        if (head1 < attentionMaps.length) {
+            generateRealAttentionMap('attentionCanvas1', attentionMaps[head1]);
+        }
+        if (head2 < attentionMaps.length) {
+            generateRealAttentionMap('attentionCanvas2', attentionMaps[head2]);
+        }
+    } else {
+        console.log('Using synthetic attention patterns');
+        // Use synthetic patterns
+        generateAttentionMap('attentionCanvas1', head1, 1);
+        generateAttentionMap('attentionCanvas2', head2, 2);
+    }
+
+    generatePreview('previewCanvas1', head1);
+    generatePreview('previewCanvas2', head2);
+    console.log('=== initAttentionMaps complete ===');
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', initAttentionMaps);
+
+// Also try initializing immediately in case DOM is already loaded
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initAttentionMaps();
+}
+
+// Generate preview canvas (attention pattern only, no satellite image)
+function generatePreview(canvasId, headIndex) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) {
+        console.log('Preview canvas not found:', canvasId);
+        return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+
+    console.log('Generating preview for head', headIndex, 'on canvas', canvasId, 'size:', width, 'x', height);
+    
+    // Fill with dark background
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Create attention pattern
+    const imageData = ctx.createImageData(width, height);
+    const data = imageData.data;
+
+    let maxAttn = 0;
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+
+            let attention = 0;
+            const nx = x / width;
+            const ny = y / height;
+
+            switch (headIndex % 8) {
+                case 0: // Center focus
+                    attention = Math.exp(-((nx - 0.5) ** 2 + (ny - 0.5) ** 2) * 5);
+                    break;
+                case 1: // Horizontal stripes
+                    attention = (Math.sin(ny * Math.PI * 5) > 0) ? 0.95 : 0.05;
+                    break;
+                case 2: // Vertical stripes
+                    attention = (Math.sin(nx * Math.PI * 5) > 0) ? 0.95 : 0.05;
+                    break;
+                case 3: // Diagonal
+                    attention = (Math.sin((nx + ny) * Math.PI * 4) > 0) ? 0.9 : 0.1;
+                    break;
+                case 4: // Radial rings
+                    const d = Math.sqrt((nx - 0.5) ** 2 + (ny - 0.5) ** 2);
+                    attention = (Math.sin(d * Math.PI * 6) > 0) ? 0.9 : 0.1;
+                    break;
+                case 5: // Grid
+                    const gx = Math.sin(nx * Math.PI * 6);
+                    const gy = Math.sin(ny * Math.PI * 6);
+                    attention = (Math.abs(gx) > 0.3 || Math.abs(gy) > 0.3) ? 0.9 : 0.1;
+                    break;
+                case 6: // Four corners
+                    const c1 = Math.exp(-(nx ** 2 + ny ** 2) * 3);
+                    const c2 = Math.exp(-(((1-nx) ** 2) + ny ** 2) * 3);
+                    const c3 = Math.exp(-(nx ** 2 + ((1-ny) ** 2)) * 3);
+                    const c4 = Math.exp(-(((1-nx) ** 2) + ((1-ny) ** 2)) * 3);
+                    attention = Math.max(c1, c2, c3, c4);
+                    break;
+                case 7: // Checkerboard
+                    const ch = Math.sin(nx * Math.PI * 8) * Math.sin(ny * Math.PI * 8);
+                    attention = ch > 0 ? 0.9 : 0.1;
+                    break;
+            }
+            
+            // Track max attention
+            if (attention > maxAttn) maxAttn = attention;
+
+            // Apply vibrant heatmap colors for preview
+            if (attention > 0.8) {
+                data[i] = 255; data[i + 1] = 255; data[i + 2] = 50; data[i + 3] = 255;
+            } else if (attention > 0.5) {
+                data[i] = 255; data[i + 1] = 140; data[i + 2] = 0; data[i + 3] = 240;
+            } else if (attention > 0.2) {
+                data[i] = 0; data[i + 1] = 200; data[i + 2] = 100; data[i + 3] = 200;
+            } else {
+                data[i] = 20; data[i + 1] = 20; data[i + 2] = 100; data[i + 3] = 100;
+            }
+        }
+    }
+
+    console.log('Preview generated for head', headIndex, 'max attention:', maxAttn);
+    ctx.putImageData(imageData, 0, 0);
+}
+
+// Vote function
+async function vote(winner) {
+    const winnerHead = winner === 1 ? head1 : head2;
+    const loserHead = winner === 1 ? head2 : head1;
+    
+    try {
+        const response = await fetch('/attention-vote/cast', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                winner: winnerHead,
+                loser: loserHead,
+                city: city
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`Vote recorded! Attention Head ${winnerHead} wins!`);
+            window.location.reload();
+        } else {
+            alert('Error recording vote: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Skip function
+function skipVote() {
+    window.location.reload();
+}
+</script>
+{% endif %}
+{% endblock %}
